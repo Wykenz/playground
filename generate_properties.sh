@@ -14,6 +14,26 @@ function check_version_format {
 
 }
 
+function generate_release_properties_file {
+
+	(
+		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
+		echo "build.timestamp="
+		echo "bundle.checksum.sha512="
+		echo "bundle.url=${BUNDLE_URL}"
+		echo "git.hash.liferay-docker="
+		echo "git.hash.liferay-portal-ee="
+		echo "liferay.docker.fix.pack.url=${LIFERAY_DOCKER_FIX_PACK_URL}"
+		echo "liferay.docker.image=liferay/dxp:${LIFERAY_DOCKER_IMAGE}"
+		echo "liferay.docker.tags=liferay/dxp:${LIFERAY_DOCKER_IMAGE}${LIFERAY_DOCKER_TAGS}"
+		echo "liferay.docker.test.hotfix.url=${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
+		echo "liferay.docker.test.installed.patch=${LIFERAY_DOCKER_TEST_INSTALLED_PATCH}"
+		echo "liferay.product.version=${PRODUCT_VERSION}"
+		echo "release.date=${RELEASE_DATE}" #rewrite this to the correct format
+		echo "target.platform.version=${TARGET_PLATFORM_VERSION}"
+	) > release.properties
+}
+
 function get_main_key {
 	local key="${1}"
 
@@ -37,53 +57,39 @@ function get_yml {
 
 }
 
-function generate_release_properties_file {
-
+function get_value {
 	check_version_format "${1}"
 
-	local version=$(check_version_format "${1}")
+	local version
+	local main_key
 
-	local tomcat_version=$(get_json ${version} .appServerTomcatVersion)
+	version=$(check_version_format "${1}")
 
-	local product_version=$(get_json ${version} .liferayProductVersion)
+	main_key=$(get_main_key "${version}")
 
-	local release_date=$(get_json ${version} .releaseDate)
+	TOMCAT_VERSION=$(get_json "${version}" .appServerTomcatVersion)
 
-	local target_platform_version=$(get_json ${version} .targetPlatformVersion)
+	BUNDLE_URL=$(get_yml "${main_key}" "${version}" bundle_url)
 
-	local main_key=$(get_main_key "${version}")
+	LIFERAY_DOCKER_FIX_PACK_URL=$(get_yml "${main_key}" "${version}" fix_pack_url)
 
-	local bundle_url=$(get_yml "${main_key}" "${version}" bundle_url)
+	LIFERAY_DOCKER_IMAGE="${version}"
 
-	local liferay_docker_image="${version}"
+	LIFERAY_DOCKER_TAGS=$(get_yml "${main_key}" "${version}" additional_tags)
 
-	local liferay_docker_test_installed_patch=$(get_yml "${main_key}" "${version}" test_installed_patch)
+	LIFERAY_DOCKER_TEST_HOTFIX_URL=$(get_yml "${main_key}" "${version}" test_hotfix_url)
 
-	local liferay_docker_fix_pack_url=$(get_yml "${main_key}" "${version}" fix_pack_url)
+	LIFERAY_DOCKER_TEST_INSTALLED_PATCH=$(get_yml "${main_key}" "${version}" test_installed_patch)
 
-	local liferay_docker_test_hotfix_url=$(get_yml "${main_key}" "${version}" test_hotfix_url)
+	PRODUCT_VERSION=$(get_json "${version}" .liferayProductVersion)
 
-	local liferay_docker_tags=$(get_yml "${main_key}" "${version}" additional_tags)
+	RELEASE_DATE=$(get_json "${version}" .releaseDate)
 
-	(
-		echo "app.server.tomcat.version=${tomcat_version}"
-		echo "build.timestamp="
-		echo "bundle.checksum.sha512="
-		echo "bundle.url=${bundle_url}"
-		echo "git.hash.liferay-docker="
-		echo "git.hash.liferay-portal-ee="
-		echo "liferay.docker.fix.pack.url=${liferay_docker_fix_pack_url}"
-		echo "liferay.docker.image=liferay/dxp:${liferay_docker_image}"
-		echo "liferay.docker.tags=liferay/dxp:${liferay_docker_image}${liferay_docker_tags}"
-		echo "liferay.docker.test.hotfix.url=${liferay_docker_test_hotfix_url}"
-		echo "liferay.docker.test.installed.patch=${liferay_docker_test_installed_patch}"
-		echo "liferay.product.version=${product_version}"
-		echo "release.date=${release_date}" #rewrite this to the correct format
-		echo "target.platform.version=${target_platform_version}"
-	) > release.properties
+	TARGET_PLATFORM_VERSION=$(get_json "${version}" .targetPlatformVersion)
 }
 
 function main {
+	get_value "${1}"
 	generate_release_properties_file "${1}"
 }
 
