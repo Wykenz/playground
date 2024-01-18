@@ -1,16 +1,11 @@
 #!/bin/bash
 
-function check_version_format {
-	local version=${1}
+function get_liferay_version_format {
+	local url=$(grep -E ".${TIME_STAMP}." bundles.yml)
+	local file_url="${url##*: }"
+	local base="${file_url%/*}"
 
-	if [[ "${version}" =~ ^7\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
-	then
-		tag="${version##*.}"
-		base="${version%.*}"
-		echo "${base}-sp${tag}"
-	else
-		echo "${version}"
-	fi
+	LIFERAY_VERSION="${base##*/}"
 
 }
 
@@ -18,7 +13,7 @@ function generate_release_properties_file {
 
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
-		echo "build.timestamp="
+		echo "build.timestamp=${BUILD_TIMESTAMP}"
 		echo "bundle.checksum.sha512="
 		echo "bundle.url=${BUNDLE_URL}"
 		echo "git.hash.liferay-docker="
@@ -40,11 +35,33 @@ function get_main_key {
 	echo "${key%%-*}"
 }
 
+function get_time_stamp {
+	local version="${1}"
+
+	url="https://releases.liferay.com/dxp/${version}/"
+	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep 'tomcat' | grep -E '\.7z$')
+	numeric_part=${filename%.*}
+	numeric_part=${numeric_part##*-}
+ 	TIME_STAMP="${numeric_part}"
+
+
+}
+
 function get_json {
 	local version="${1}"
 	local tag="${2}"
+	local url=$(grep -E ".${TIME_STAMP}." bundles.yml)
+	local file_url="${url##*: }"
+	local file_name="${file_url##*/}"
 
-	curl -s https://releases.liferay.com/tools/workspace/.product_info.json | jq '.[] | select(.liferayDockerImage=="liferay/dxp:'${version}'") | '${tag}''
+	result=$(curl -s "${file_url}" | jq '.[] | select(.liferayDockerImage=="liferay/dxp:'${version}'") | '${tag}'')
+
+	if [[ -n "${result}" ]] && [[ "${tag}" == ".appServerTomcatVersion" ]]
+	then
+		curl -o "${file_name}" ./"${file_name}"
+
+		##tomcat_folder=$(find <output_directory> -type d -name "tomcat*")
+	fi
 
 }
 
@@ -57,40 +74,50 @@ function get_yml {
 
 }
 
-function get_value {
-	check_version_format "${1}"
+function set_value {
+	get_liferay_version_format
 
-	local version
 	local main_key
 
-	version=$(check_version_format "${1}")
+	main_key=$(get_main_key "${LIFERAY_VERSION}")
 
-	main_key=$(get_main_key "${version}")
+	TOMCAT_VERSION=$(get_json "${LIFERAY_VERSION}" .appServerTomcatVersion)
 
-	TOMCAT_VERSION=$(get_json "${version}" .appServerTomcatVersion)
+	BUILD_TIMESTAMP="${TIME_STAMP}"
 
-	BUNDLE_URL=$(get_yml "${main_key}" "${version}" bundle_url)
+	BUNDLE_URL=$(get_yml "${main_key}" "${LIFERAY_VERSION}" bundle_url)
 
-	LIFERAY_DOCKER_FIX_PACK_URL=$(get_yml "${main_key}" "${version}" fix_pack_url)
+	LIFERAY_DOCKER_FIX_PACK_URL=$(get_yml "${main_key}" "${LIFERAY_VERSION}" fix_pack_url)
 
-	LIFERAY_DOCKER_IMAGE="${version}"
+	LIFERAY_DOCKER_IMAGE="${LIFERAY_VERSION}"
 
-	LIFERAY_DOCKER_TAGS=$(get_yml "${main_key}" "${version}" additional_tags)
+	LIFERAY_DOCKER_TAGS=$(get_yml "${main_key}" "${LIFERAY_VERSION}" additional_tags)
 
-	LIFERAY_DOCKER_TEST_HOTFIX_URL=$(get_yml "${main_key}" "${version}" test_hotfix_url)
+	LIFERAY_DOCKER_TEST_HOTFIX_URL=$(get_yml "${main_key}" "${LIFERAY_VERSION}" test_hotfix_url)
 
-	LIFERAY_DOCKER_TEST_INSTALLED_PATCH=$(get_yml "${main_key}" "${version}" test_installed_patch)
+	LIFERAY_DOCKER_TEST_INSTALLED_PATCH=$(get_yml "${main_key}" "${LIFERAY_VERSION}" test_installed_patch)
 
-	PRODUCT_VERSION=$(get_json "${version}" .liferayProductVersion)
+	PRODUCT_VERSION=$(get_json "${LIFERAY_VERSION}" .liferayProductVersion)
 
-	RELEASE_DATE=$(get_json "${version}" .releaseDate)
+	RELEASE_DATE=$(get_json "${LIFERAY_VERSION}" .releaseDate)
 
-	TARGET_PLATFORM_VERSION=$(get_json "${version}" .targetPlatformVersion)
+	TARGET_PLATFORM_VERSION=$(get_json "${LIFERAY_VERSION}" .targetPlatformVersion)
 }
 
 function main {
-	get_value "${1}"
-	generate_release_properties_file "${1}"
+	get_time_stamp "${1}"
+	give_version_format
+	if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
+	then
+		echo "${TIME_STAMP}"
+		echo "It's in bundle.yml"
+		#set_value "${1}"
+		#generate_release_properties_file
+	else
+		echo "${TIME_STAMP}"
+		echo "It's not in there"
+	fi
+
 }
 
 main "${1}"
