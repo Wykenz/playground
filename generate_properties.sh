@@ -1,13 +1,13 @@
 #!/bin/bash
 
 function clean_up_nulls {
-	sed -i 's/null//g' release.properties 
+	sed -i 's/null//g' release.properties
 }
 
 function download_zip_files {
 	mkdir -p downloads
-	
-	curl -o downloads/"${BUNDLE_URL##*/}" "${BUNDLE_URL}"
+
+	curl -o downloads/"${BUNDLE_URL##*/}" "https://${BUNDLE_URL}"
 
 }
 
@@ -58,12 +58,10 @@ function get_time_stamp {
 
 }
 
-function get_value_from_files {
+function get_tomcat_version_from_file {
 	local file_name="${1}"
 	local name
 
-	if [[ "${tag}" == ".appServerTomcatVersion" ]]
-	then
 		curl -o ./"${file_name}" "https://${BUNDLE_URL}"
 		if [[ "${file_name}" == *.7z ]]
 		then
@@ -73,7 +71,6 @@ function get_value_from_files {
 			name=$(unzip l "${file_name}" | grep -m 1 "/tomcat")
 			echo "${name##*-}"
 		fi
-	fi
 	rm -r "${file_name}"
 }
 
@@ -83,11 +80,11 @@ function get_json {
 	local file_name="${BUNDLE_URL##*/}"
 	local name
 
-	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage=="liferay/dxp:'${version}'") | '${tag}'')
+	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage | tostring | test("'${version}'")) | '${tag}'')
 
-	if [[ -z "${result}" ]]
+	if [[ -z "${result}" ]] && [[ "${tag}" == ".appServerTomcatVersion" ]]
 	then
-		name=$(get_value_from_files "${file_name}")
+		name=$(get_tomcat_version_from_file "${file_name}")
 		echo "${name}"
 	else
 		echo "${result}"
