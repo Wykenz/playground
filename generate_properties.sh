@@ -1,10 +1,24 @@
 #!/bin/bash
 
+function clean_up_nulls {
+	sed -i 's/null//g' release.properties 
+}
+
+function download_zip_files {
+	mkdir -p downloads
+	
+	curl -o downloads/"${BUNDLE_URL##*/}" "${BUNDLE_URL}"
+
+}
+
 function get_liferay_version_format {
-	local url=$(grep -E ".${TIME_STAMP}." bundles.yml)
 	local file_url="${url##*: }"
 	local base="${file_url%/*}"
+	local url
+
+	url=$(grep -E ".${TIME_STAMP}." bundles.yml)
 	LIFERAY_VERSION="${base##*/}"
+
 	if [[ "${LIFERAY_VERSION}" =~ ^7\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
 	then
 		tag="${LIFERAY_VERSION##*.}"
@@ -14,7 +28,6 @@ function get_liferay_version_format {
 }
 
 function generate_release_properties_file {
-
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
@@ -31,12 +44,6 @@ function generate_release_properties_file {
 		echo "release.date=${RELEASE_DATE}" #rewrite this to the correct format
 		echo "target.platform.version=${TARGET_PLATFORM_VERSION}"
 	) > release.properties
-}
-
-function get_main_key {
-	local key="${1}"
-
-	echo "${key%%-*}"
 }
 
 function get_time_stamp {
@@ -73,8 +80,8 @@ function get_value_from_files {
 function get_json {
 	local version="${1}"
 	local tag="${2}"
-	local name
 	local file_name="${BUNDLE_URL##*/}"
+	local name
 
 	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage=="liferay/dxp:'${version}'") | '${tag}'')
 
@@ -101,9 +108,6 @@ function get_yml {
 	else
 		echo "${result}"
 	fi
-
-
-
 }
 
 function set_value {
@@ -111,7 +115,7 @@ function set_value {
 
 	local main_key
 
-	main_key=$(get_main_key "${LIFERAY_VERSION}")
+	main_key="${LIFERAY_VERSION%%-*}"
 
 	BUILD_TIMESTAMP="${TIME_STAMP}"
 
@@ -143,12 +147,16 @@ function main {
 	then
 		echo "${TIME_STAMP}"
 		echo "It's in bundle.yml"
+
 		set_value "${1}"
+		download_zip_files
 		generate_release_properties_file
 	else
 		echo "${TIME_STAMP}"
-		echo "It's not in there"
+		echo "It's not in bundle.yml"
 	fi
+
+	clean_up_nulls
 
 }
 
