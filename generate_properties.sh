@@ -5,11 +5,18 @@ function clean_up_nulls {
 }
 
 function download_zip_files {
+	local archive="${BUNDLE_URL##*/}"
+
 	cd versions || return
 	mkdir -p "${LIFERAY_VERSION}"
 
-	curl -o "${LIFERAY_VERSION}"/"${BUNDLE_URL##*/}" "https://${BUNDLE_URL}"
+	curl -o "${LIFERAY_VERSION}"/"${archive}" "https://${BUNDLE_URL}"
 
+	7z e -y downloads/"${LIFERAY_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${LIFERAY_VERSION}"/ ".githash" -r
+
+	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"$PWD"/downloads/"${LIFERAY_VERSION}"/.githash)
+
+	rm -f downloads/"${LIFERAY_VERSION}"/.githash
 }
 
 function get_liferay_version_format {
@@ -36,7 +43,7 @@ function generate_release_properties_file {
 		echo "bundle.checksum.sha512=${BUNDLE_CHECKSUM_SHA512}"
 		echo "bundle.url=${BUNDLE_URL}"
 		echo "git.hash.liferay-docker="
-		echo "git.hash.liferay-portal-ee="
+		echo "git.hash.liferay-portal-ee=${GIT_HASH_LIFERAY_PORTAL_EE}"
 		echo "liferay.docker.fix.pack.url=${LIFERAY_DOCKER_FIX_PACK_URL}"
 		echo "liferay.docker.image=liferay/dxp:${LIFERAY_DOCKER_IMAGE}"
 		echo "liferay.docker.tags=liferay/dxp:${LIFERAY_DOCKER_IMAGE}/${LIFERAY_DOCKER_TAGS}"
