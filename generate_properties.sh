@@ -5,9 +5,10 @@ function clean_up_nulls {
 }
 
 function download_zip_files {
-	mkdir -p downloads
+	cd versions || return
+	mkdir -p "${LIFERAY_VERSION}"
 
-	curl -o downloads/"${BUNDLE_URL##*/}" "https://${BUNDLE_URL}"
+	curl -o "${LIFERAY_VERSION}"/"${BUNDLE_URL##*/}" "https://${BUNDLE_URL}"
 
 }
 
@@ -28,10 +29,11 @@ function get_liferay_version_format {
 }
 
 function generate_release_properties_file {
+	cd "${LIFERAY_VERSION}" || return
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
-		echo "bundle.checksum.sha512="
+		echo "bundle.checksum.sha512=${BUNDLE_CHECKSUM_SHA512}"
 		echo "bundle.url=${BUNDLE_URL}"
 		echo "git.hash.liferay-docker="
 		echo "git.hash.liferay-portal-ee="
@@ -44,6 +46,14 @@ function generate_release_properties_file {
 		echo "release.date=${RELEASE_DATE}" #rewrite this to the correct format
 		echo "target.platform.version=${TARGET_PLATFORM_VERSION}"
 	) > release.properties
+}
+
+function generate_checksum_files {
+	local file_name="${BUNDLE_URL##*/}"
+
+	sha512sum "${file_name}" > "${file_name}.sha512"
+
+	SHA512_FILE_NAME="${file_name}.sha512"
 }
 
 function get_time_stamp {
@@ -116,6 +126,8 @@ function set_value {
 
 	BUILD_TIMESTAMP="${TIME_STAMP}"
 
+	BUNDLE_CHECKSUM_SHA512="${SHA512_FILE_NAME}"
+
 	BUNDLE_URL=$(get_yml "${main_key}" "${LIFERAY_VERSION}" bundle_url)
 
 	TOMCAT_VERSION=$(get_json "${LIFERAY_VERSION}" .appServerTomcatVersion)
@@ -138,22 +150,21 @@ function set_value {
 }
 
 function main {
-	get_time_stamp "${1}"
 
-	if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
-	then
-		echo "${TIME_STAMP}"
-		echo "It's in bundle.yml"
+	while read p; do
+ 		get_time_stamp "${p}"
+		mkdir -p "versions"
 
-		set_value "${1}"
-		download_zip_files
-		generate_release_properties_file
-	else
-		echo "${TIME_STAMP}"
-		echo "It's not in bundle.yml"
-	fi
-
-	clean_up_nulls
+		if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
+		then
+			set_value "${p}"
+			download_zip_files
+			generate_release_properties_file
+			generate_checksum_files
+			cd /home/me/dev/projects/playground/playground || exit
+		fi
+		clean_up_nulls
+	done < versions.txt
 
 }
 
