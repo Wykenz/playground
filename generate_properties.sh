@@ -1,6 +1,8 @@
 #!/bin/bash
 
 function clean_up_nulls {
+	cd "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}" || exit
+
 	sed -i 's/null//g' release.properties
 }
 
@@ -9,14 +11,21 @@ function download_zip_files {
 
 	cd versions || return
 	mkdir -p "${LIFERAY_VERSION}"
+	mkdir -p downloads/"${LIFERAY_VERSION}"
 
-	curl -o "${LIFERAY_VERSION}"/"${archive}" "https://${BUNDLE_URL}"
+	curl -o downloads/"${LIFERAY_VERSION}"/"${archive}" "https://${BUNDLE_URL}"
+
+	curl -o "${LIFERAY_VERSION}"/"${archive}" "https://${LIFERAY_DOCKER_FIX_PACK_URL}"
+
+	curl -o "${LIFERAY_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}" "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
 
 	7z e -y downloads/"${LIFERAY_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${LIFERAY_VERSION}"/ ".githash" -r
 
 	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"$PWD"/downloads/"${LIFERAY_VERSION}"/.githash)
 
-	rm -f downloads/"${LIFERAY_VERSION}"/.githash
+	generate_checksum_files
+
+	rm -r -f cd "${MAIN_DIR}"/versions/downloads
 }
 
 function get_liferay_version_format {
@@ -36,7 +45,7 @@ function get_liferay_version_format {
 }
 
 function generate_release_properties_file {
-	cd "${LIFERAY_VERSION}" || return
+	cd "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}" || return
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
@@ -58,9 +67,14 @@ function generate_release_properties_file {
 function generate_checksum_files {
 	local file_name="${BUNDLE_URL##*/}"
 
+	cd "${MAIN_DIR}"/versions/downloads/"${LIFERAY_VERSION}" || exit
+
 	sha512sum "${file_name}" > "${file_name}.sha512"
 
-	SHA512_FILE_NAME="${file_name}.sha512"
+	BUNDLE_CHECKSUM_SHA512="${file_name}.sha512"
+
+	mv "${file_name}".sha512 "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"
+
 }
 
 function get_time_stamp {
@@ -129,11 +143,11 @@ function set_value {
 
 	local main_key
 
+	local date=$(get_json "${LIFERAY_VERSION}" .releaseDate)
+
 	main_key="${LIFERAY_VERSION%%-*}"
 
 	BUILD_TIMESTAMP="${TIME_STAMP}"
-
-	BUNDLE_CHECKSUM_SHA512="${SHA512_FILE_NAME}"
 
 	BUNDLE_URL=$(get_yml "${main_key}" "${LIFERAY_VERSION}" bundle_url)
 
@@ -151,27 +165,28 @@ function set_value {
 
 	PRODUCT_VERSION=$(get_json "${LIFERAY_VERSION}" .liferayProductVersion)
 
-	RELEASE_DATE=$(get_json "${LIFERAY_VERSION}" .releaseDate)
+	RELEASE_DATE=$(echo "${date}" | awk '{print "date -d\""$1FS$2FS$3"\" +%Y-%m-%d"}' | bash)
 
 	TARGET_PLATFORM_VERSION=$(get_json "${LIFERAY_VERSION}" .targetPlatformVersion)
 }
 
 function main {
+	MAIN_DIR="${PWD}"
 
-	while read p; do
- 		get_time_stamp "${p}"
-		mkdir -p "versions"
+	get_time_stamp "${1}"
+	mkdir -p "versions"
 
-		if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
-		then
-			set_value "${p}"
-			download_zip_files
-			generate_release_properties_file
-			generate_checksum_files
-			cd /home/me/dev/projects/playground/playground || exit
-		fi
-		clean_up_nulls
-	done < versions.txt
+	if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
+	then
+		set_value "${1}"
+		download_zip_files
+		generate_release_properties_file
+		cd "${MAIN_DIR}" || exit
+	fi
+	clean_up_nulls
+	#while read p; do
+
+	#done < versions.txt
 
 }
 
