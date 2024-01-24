@@ -1,31 +1,32 @@
 #!/bin/bash
 
-function clean_up_nulls {
-	cd "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}" || exit
+source ./_liferay_common.sh
 
-	sed -i 's/null//g' release.properties
+function clean_up_nulls {
+	sed -i 's*/null**g' "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
+	sed -i 's/null//g' "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
+	sed -i 's/"//g' "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
 }
 
 function download_zip_files {
 	local archive="${BUNDLE_URL##*/}"
 
-	cd versions || return
-	mkdir -p "${LIFERAY_VERSION}"
-	mkdir -p downloads/"${LIFERAY_VERSION}"
+	mkdir -p versions/"${LIFERAY_VERSION}"
+	mkdir -p versions/downloads/"${LIFERAY_VERSION}"
 
-	curl -o downloads/"${LIFERAY_VERSION}"/"${archive}" "https://${BUNDLE_URL}"
+	lc_download "https://${BUNDLE_URL}" versions/downloads/"${LIFERAY_VERSION}"/"${archive}"
 
-	curl -o "${LIFERAY_VERSION}"/"${archive}" "https://${LIFERAY_DOCKER_FIX_PACK_URL}"
+	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${LIFERAY_VERSION}"/"${archive}"
 
-	curl -o "${LIFERAY_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}" "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
+	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${LIFERAY_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
 
-	7z e -y downloads/"${LIFERAY_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${LIFERAY_VERSION}"/ ".githash" -r
+	7z e -y versions/downloads/"${LIFERAY_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${LIFERAY_VERSION}"/ ".githash" -r
 
-	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"$PWD"/downloads/"${LIFERAY_VERSION}"/.githash)
+	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"${MAIN_DIR}"/downloads/"${LIFERAY_VERSION}"/.githash)
 
 	generate_checksum_files
 
-	rm -r -f cd "${MAIN_DIR}"/versions/downloads
+	rm -r "${MAIN_DIR}"/versions/downloads
 }
 
 function get_liferay_version_format {
@@ -45,7 +46,6 @@ function get_liferay_version_format {
 }
 
 function generate_release_properties_file {
-	cd "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}" || return
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
@@ -61,20 +61,15 @@ function generate_release_properties_file {
 		echo "liferay.product.version=${PRODUCT_VERSION}"
 		echo "release.date=${RELEASE_DATE}" #rewrite this to the correct format
 		echo "target.platform.version=${TARGET_PLATFORM_VERSION}"
-	) > release.properties
+	) > "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
 }
 
 function generate_checksum_files {
 	local file_name="${BUNDLE_URL##*/}"
 
-	cd "${MAIN_DIR}"/versions/downloads/"${LIFERAY_VERSION}" || exit
-
-	sha512sum "${file_name}" > "${file_name}.sha512"
+	sha512sum versions/downloads/"${LIFERAY_VERSION}"/"${file_name}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/"${file_name}.sha512"
 
 	BUNDLE_CHECKSUM_SHA512="${file_name}.sha512"
-
-	mv "${file_name}".sha512 "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"
-
 }
 
 function get_time_stamp {
@@ -142,8 +137,9 @@ function set_value {
 	get_liferay_version_format
 
 	local main_key
+	local date
 
-	local date=$(get_json "${LIFERAY_VERSION}" .releaseDate)
+	date=$(get_json "${LIFERAY_VERSION}" .releaseDate)
 
 	main_key="${LIFERAY_VERSION%%-*}"
 
@@ -165,29 +161,33 @@ function set_value {
 
 	PRODUCT_VERSION=$(get_json "${LIFERAY_VERSION}" .liferayProductVersion)
 
-	RELEASE_DATE=$(echo "${date}" | awk '{print "date -d\""$1FS$2FS$3"\" +%Y-%m-%d"}' | bash)
-
+	if [ -n "${date}" ]
+	then
+		RELEASE_DATE=$(date -d "${date//\"/}" +"%Y-%-m-%-d")
+	fi
+	
 	TARGET_PLATFORM_VERSION=$(get_json "${LIFERAY_VERSION}" .targetPlatformVersion)
 }
 
 function main {
 	MAIN_DIR="${PWD}"
-
-	get_time_stamp "${1}"
+	version=$1
 	mkdir -p "versions"
 
-	if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
-	then
-		set_value "${1}"
-		download_zip_files
-		generate_release_properties_file
-		cd "${MAIN_DIR}" || exit
-	fi
-	clean_up_nulls
-	#while read p; do
+	#while read version; do
+		get_time_stamp "${version}"
 
+		if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
+		then
+			set_value "${version}"
+			download_zip_files
+			generate_release_properties_file
+			clean_up_nulls
+		#else
+			#continue
+		fi
 	#done < versions.txt
 
 }
 
-main "${1}"
+main $1
