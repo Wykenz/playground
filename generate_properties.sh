@@ -3,26 +3,26 @@
 source ./_liferay_common.sh
 
 function clean_up_nulls {
-	sed -i 's*/null**g' "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
-	sed -i 's/null//g' "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
-	sed -i 's/"//g' "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
+	sed -i 's*/null**g' "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
+	sed -i 's/null//g' "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
+	sed -i 's/"//g' "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
 }
 
 function download_zip_files {
 	local archive="${BUNDLE_URL##*/}"
 
-	mkdir -p versions/"${LIFERAY_VERSION}"
-	mkdir -p versions/downloads/"${LIFERAY_VERSION}"
+	mkdir -p versions/"${DIR_VERSION}"
+	mkdir -p versions/downloads/"${DIR_VERSION}"
 
-	lc_download "https://${BUNDLE_URL}" versions/downloads/"${LIFERAY_VERSION}"/"${archive}"
+	lc_download "https://${BUNDLE_URL}" versions/downloads/"${DIR_VERSION}"/"${archive}"
 
-	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${LIFERAY_VERSION}"/"${archive}"
+	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${archive}"
 
-	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${LIFERAY_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
+	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
 
-	7z e -y versions/downloads/"${LIFERAY_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${LIFERAY_VERSION}"/ ".githash" -r
+	7z e -y versions/downloads/"${DIR_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${DIR_VERSION}"/ ".githash" -r
 
-	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"${MAIN_DIR}"/downloads/"${LIFERAY_VERSION}"/.githash)
+	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
 
 	generate_checksum_files
 
@@ -30,19 +30,9 @@ function download_zip_files {
 }
 
 function get_liferay_version_format {
-	local file_url="${url##*: }"
-	local base="${file_url%/*}"
-	local url
-
-	url=$(grep -E ".${TIME_STAMP}." bundles.yml)
-	LIFERAY_VERSION="${base##*/}"
-
-	if [[ "${LIFERAY_VERSION}" =~ ^7\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
-	then
-		tag="${LIFERAY_VERSION##*.}"
-		base="${LIFERAY_VERSION%.*}"
-		LIFERAY_VERSION="${base}-sp${tag}"
-	fi
+LIFERAY_VERSION=$(grep -v additional_tags bundles.yml | grep -B 1 -E ".${DIR_VERSION}." | head -1 | tr -d '\r: ')
+echo "This is the version: ${LIFERAY_VERSION}itt valami nem oke"
+echo "This is the version: ${LIFERAY_VERSION}"
 }
 
 function generate_release_properties_file {
@@ -61,21 +51,19 @@ function generate_release_properties_file {
 		echo "liferay.product.version=${PRODUCT_VERSION}"
 		echo "release.date=${RELEASE_DATE}" #rewrite this to the correct format
 		echo "target.platform.version=${TARGET_PLATFORM_VERSION}"
-	) > "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/release.properties
+	) > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
 }
 
 function generate_checksum_files {
 	local file_name="${BUNDLE_URL##*/}"
 
-	sha512sum versions/downloads/"${LIFERAY_VERSION}"/"${file_name}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${LIFERAY_VERSION}"/"${file_name}.sha512"
+	sha512sum versions/downloads/"${DIR_VERSION}"/"${file_name}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${file_name}.sha512"
 
 	BUNDLE_CHECKSUM_SHA512="${file_name}.sha512"
 }
 
 function get_time_stamp {
-	local version="${1}"
-
-	url="https://releases.liferay.com/dxp/${version}/"
+	url="https://releases.liferay.com/dxp/${DIR_VERSION}/"
 	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$')
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
@@ -171,15 +159,15 @@ function set_value {
 
 function main {
 	MAIN_DIR="${PWD}"
-	version=$1
+	DIR_VERSION=$1
 	mkdir -p "versions"
 
 	#while read version; do
-		get_time_stamp "${version}"
+		get_time_stamp "${DIR_VERSION}"
 
-		if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
+		if [[ $(grep -c "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
-			lc_time_run set_value "${version}"
+			lc_time_run set_value "${DIR_VERSION}"
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
