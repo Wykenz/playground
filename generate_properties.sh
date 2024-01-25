@@ -12,25 +12,25 @@ function download_zip_files {
 	local archive="${BUNDLE_URL##*/}"
 
 	mkdir -p versions/"${DIR_VERSION}"
-	mkdir -p versions/downloads/"${DIR_VERSION}"
+	mkdir -p downloads/"${DIR_VERSION}"
 
-	lc_download "https://${BUNDLE_URL}" versions/downloads/"${DIR_VERSION}"/"${archive}"
+	lc_download "https://${BUNDLE_URL}" downloads/"${DIR_VERSION}"/"${archive}"
 
 	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${archive}"
 
 	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
 
-	7z e -y versions/downloads/"${DIR_VERSION}"/"${archive}" -o/"$PWD"/downloads/"${DIR_VERSION}"/ ".githash" -r
+	7z e -y downloads/"${DIR_VERSION}"/"${archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r
 
 	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
 
 	generate_checksum_files
 
-	rm -r "${MAIN_DIR}"/versions/downloads
+	rm -r "${MAIN_DIR}"/downloads
 }
 
 function get_liferay_version_format {
-LIFERAY_VERSION=$(grep -v additional_tags bundles.yml | grep -B 1 -E ".${DIR_VERSION}." | head -1 | tr -d '\r: ')
+LIFERAY_VERSION=$(grep -v additional_tags bundles.yml | grep -B 1 -E ".${TIME_STAMP}." | head -1 | tr -d '\r: ')
 echo "This is the version: ${LIFERAY_VERSION}itt valami nem oke"
 echo "This is the version: ${LIFERAY_VERSION}"
 }
@@ -79,10 +79,10 @@ function get_tomcat_version_from_file {
 		curl -o ./"${file_name}" "https://${BUNDLE_URL}"
 		if [[ "${file_name}" == *.7z ]]
 		then
-			name=$(7z l "${file_name}" | grep -m 1 "/tomcat")
+			name=$(7z l "${file_name}" | grep -m 1 "/tomcat" | tr '/')
 			echo "${name##*-}"
 		else
-			name=$(unzip l "${file_name}" | grep -m 1 "/tomcat")
+			name=$(unzip -l "${file_name}" | grep -m 1 "/tomcat" | tr '/')
 			echo "${name##*-}"
 		fi
 	rm -r "${file_name}"
@@ -129,7 +129,7 @@ function set_value {
 
 	date=$(get_json "${LIFERAY_VERSION}" .releaseDate)
 
-	main_key="${LIFERAY_VERSION%%-*}"
+	main_key=$(echo "${LIFERAY_VERSION}" | cut -d "." -f 1,2,3)
 
 	BUILD_TIMESTAMP="${TIME_STAMP}"
 
@@ -162,12 +162,12 @@ function main {
 	DIR_VERSION=$1
 	mkdir -p "versions"
 
-	#while read version; do
+	#while read DIR_VERSION; do
 		get_time_stamp "${DIR_VERSION}"
 
 		if [[ $(grep -c "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
-			lc_time_run set_value "${DIR_VERSION}"
+			lc_time_run set_value
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
