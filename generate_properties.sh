@@ -179,10 +179,10 @@ function main {
 
 		if [[ $(grep -c "${TIME_STAMP}" bundles.yml) -gt 0 ]]
 		then
-			set_value "${version}"
-			download_zip_files
-			generate_release_properties_file
-			clean_up_nulls
+			lc_time_run set_value "${version}"
+			lc_time_run download_zip_files
+			lc_time_run generate_release_properties_file
+			lc_time_run clean_up_nulls
 		#else
 			#continue
 		fi

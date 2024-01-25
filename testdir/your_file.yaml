@@ -1,0 +1,10 @@
+fruits:
+  apple:
+    color: red
+  banana:
+    color: yellow
+veggies:
+  carrot:
+    color: orange
+  onion:
+    color: purple
