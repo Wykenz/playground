@@ -20,9 +20,14 @@ function download_zip_files {
 
 	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
 
-	7z e -y downloads/"${DIR_VERSION}"/"${archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r
+	if [[ "${file_name}" == *.7z ]]
+	then
+		7z e -y downloads/"${DIR_VERSION}"/"${archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r
+	else
+		unzip -o downloads/"${DIR_VERSION}"/"${archive}" -d "${MAIN_DIR}"/downloads/"${DIR_VERSION}" ".githash" -x "*.zip"
+	fi
 
-	GIT_HASH_LIFERAY_PORTAL_EE=$(cat /"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
+	GIT_HASH_LIFERAY_PORTAL_EE=$(cat "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
 
 	generate_checksum_files
 
@@ -57,13 +62,13 @@ function generate_release_properties_file {
 function generate_checksum_files {
 	local file_name="${BUNDLE_URL##*/}"
 
-	sha512sum versions/downloads/"${DIR_VERSION}"/"${file_name}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${file_name}.sha512"
+	sha512sum downloads/"${DIR_VERSION}"/"${file_name}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${file_name}.sha512"
 
 	BUNDLE_CHECKSUM_SHA512="${file_name}.sha512"
 }
 
 function get_time_stamp {
-	url="https://releases.liferay.com/dxp/${DIR_VERSION}/"
+	url="https://releases-cdn.liferay.com/dxp/${DIR_VERSION}/"
 	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$')
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
@@ -76,13 +81,13 @@ function get_tomcat_version_from_file {
 	local file_name="${1}"
 	local name
 
-		curl -o ./"${file_name}" "https://${BUNDLE_URL}"
+		curl "https://${BUNDLE_URL}" -o ./"${file_name}"
 		if [[ "${file_name}" == *.7z ]]
 		then
-			name=$(7z l "${file_name}" | grep -m 1 "/tomcat" | tr '/')
+			name=$(7z l "${file_name}" | grep -m 1 "/tomcat" | tr -d '/')
 			echo "${name##*-}"
 		else
-			name=$(unzip -l "${file_name}" | grep -m 1 "/tomcat" | tr '/')
+			name=$(unzip -l "${file_name}" | grep -m 1 "/tomcat" | tr -d '/')
 			echo "${name##*-}"
 		fi
 	rm -r "${file_name}"
@@ -129,7 +134,7 @@ function set_value {
 
 	date=$(get_json "${LIFERAY_VERSION}" .releaseDate)
 
-	main_key=$(echo "${LIFERAY_VERSION}" | cut -d "." -f 1,2,3)
+	main_key=$(echo "${LIFERAY_VERSION}" | grep -oE "^[0-9]+\.[0-9]+\.[0-9]+")
 
 	BUILD_TIMESTAMP="${TIME_STAMP}"
 
@@ -153,7 +158,7 @@ function set_value {
 	then
 		RELEASE_DATE=$(date -d "${date//\"/}" +"%Y-%-m-%-d")
 	fi
-	
+
 	TARGET_PLATFORM_VERSION=$(get_json "${LIFERAY_VERSION}" .targetPlatformVersion)
 }
 
@@ -165,17 +170,17 @@ function main {
 	#while read DIR_VERSION; do
 		get_time_stamp "${DIR_VERSION}"
 
-		if [[ $(grep -c "${DIR_VERSION}" bundles.yml) -gt 0 ]]
+		if [[ $(grep -c -w "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
 			lc_time_run set_value
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
 		#else
-			#continue
+		#	continue
 		fi
 	#done < versions.txt
 
 }
 
-main $1
+main "${1}"
