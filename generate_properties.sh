@@ -68,7 +68,7 @@ function generate_checksum_files {
 }
 
 function get_time_stamp {
-	url="https://releases-cdn.liferay.com/dxp/${DIR_VERSION}/"
+	url="https://releases.liferay.com/dxp/${DIR_VERSION}/"
 	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$')
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
