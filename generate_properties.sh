@@ -9,22 +9,18 @@ function clean_up_nulls {
 }
 
 function download_zip_files {
-	local archive="${BUNDLE_URL##*/}"
+	local bundle_archive="${BUNDLE_URL##*/}"
 
 	mkdir -p versions/"${DIR_VERSION}"
-	mkdir -p downloads/"${DIR_VERSION}"
 
-	lc_download "https://${BUNDLE_URL}" downloads/"${DIR_VERSION}"/"${archive}"
-
-	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${archive}"
-
+	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_FIX_PACK_URL##*/}"
 	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
 
-	if [[ "${file_name}" == *.7z ]]
+	if [[ "${bundle_archive}" == *.7z ]]
 	then
-		7z e -y downloads/"${DIR_VERSION}"/"${archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r
+		7z e -y downloads/"${DIR_VERSION}"/"${bundle_archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r
 	else
-		unzip -o downloads/"${DIR_VERSION}"/"${archive}" -d "${MAIN_DIR}"/downloads/"${DIR_VERSION}" ".githash" -x "*.zip"
+		unzip -o downloads/"${DIR_VERSION}"/"${bundle_archive}" -d "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -x "*.zip"
 	fi
 
 	GIT_HASH_LIFERAY_PORTAL_EE=$(cat "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
@@ -36,8 +32,7 @@ function download_zip_files {
 
 function get_liferay_version_format {
 LIFERAY_VERSION=$(grep -v additional_tags bundles.yml | grep -B 1 -E ".${TIME_STAMP}." | head -1 | tr -d '\r: ')
-echo "This is the version: ${LIFERAY_VERSION}itt valami nem oke"
-echo "This is the version: ${LIFERAY_VERSION}"
+echo "Current version: ${LIFERAY_VERSION}"
 }
 
 function generate_release_properties_file {
@@ -73,42 +68,41 @@ function get_time_stamp {
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
  	TIME_STAMP="${numeric_part}"
-
-
 }
 
 function get_tomcat_version_from_file {
-	local file_name="${1}"
+	local bundle_archive="${1}"
 	local name
 
-		curl "https://${BUNDLE_URL}" -o ./"${file_name}"
-		if [[ "${file_name}" == *.7z ]]
-		then
-			name=$(7z l "${file_name}" | grep -m 1 "/tomcat" | tr -d '/')
-			echo "${name##*-}"
-		else
-			name=$(unzip -l "${file_name}" | grep -m 1 "/tomcat" | tr -d '/')
-			echo "${name##*-}"
-		fi
-	rm -r "${file_name}"
+	mkdir -p downloads/"${DIR_VERSION}"
+
+	lc_download "https://${BUNDLE_URL}" downloads/"${DIR_VERSION}"/"${bundle_archive}"
+
+	if [[ "${bundle_archive}" == *.7z ]]
+	then
+		name=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+		echo "${name##*-}"
+	else
+		name=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+		echo "${name##*-}"
+	fi
 }
 
 function get_json {
 	local version="${1}"
 	local tag="${2}"
-	local file_name="${BUNDLE_URL##*/}"
+	local bundle_archive="${BUNDLE_URL##*/}"
 	local name
 
 	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage | tostring | test("'${version}'")) | '${tag}'')
 
 	if [[ -z "${result}" ]] && [[ "${tag}" == ".appServerTomcatVersion" ]]
 	then
-		name=$(get_tomcat_version_from_file "${file_name}")
+		name=$(get_tomcat_version_from_file "${bundle_archive}")
 		echo "${name}"
 	else
 		echo "${result}"
 	fi
-
 }
 
 function get_yml {
@@ -164,10 +158,11 @@ function set_value {
 
 function main {
 	MAIN_DIR="${PWD}"
-	DIR_VERSION=$1
+
 	mkdir -p "versions"
 
-	#while read DIR_VERSION; do
+	while read DIR_VERSION
+	do
 		get_time_stamp "${DIR_VERSION}"
 
 		if [[ $(grep -c -w "${DIR_VERSION}" bundles.yml) -gt 0 ]]
@@ -176,11 +171,10 @@ function main {
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
-		#else
-		#	continue
+		else
+			continue
 		fi
-	#done < versions.txt
-
+	done < versions.txt
 }
 
-main "${1}"
+main
