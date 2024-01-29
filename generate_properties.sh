@@ -9,42 +9,40 @@ function clean_up_nulls {
 }
 
 function download_zip_files {
-	local archive="${BUNDLE_URL##*/}"
-
+	local bundle_archive="${BUNDLE_URL##*/}"
+	echo "${bundle_archive}"
 	mkdir -p versions/"${DIR_VERSION}"
-	mkdir -p downloads/"${DIR_VERSION}"
 
-	lc_download "https://${BUNDLE_URL}" downloads/"${DIR_VERSION}"/"${archive}"
-
-	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${archive}"
-
-	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
-
-	if [[ "${archive}" == *.7z ]]
+	if [[ "${bundle_archive}" == *.7z ]]
 	then
-		if ( ! 7z e -y downloads/"${DIR_VERSION}"/"${archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r )
+		if ( ! 7z e -y "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}" -o/"${MAIN_DIR}"/downloads/"${DIR_VERSION}"/ ".githash" -r )
 		then
-			lc_log "ERROR" "There is no .githas in the 7z file"
+			lc_log "ERROR" "There is no .githash in the 7z file"
 		fi
 	else
-		if ( ! unzip -o downloads/"${DIR_VERSION}"/"${archive}" -d "${MAIN_DIR}"/downloads/"${DIR_VERSION}" ".githash" -x "*.zip" )
+		if ( ! unzip -o "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}" -d "${MAIN_DIR}"/downloads/"${DIR_VERSION}" ".githash" -x "*.zip" )
 		then
-			lc_log "ERROR" "There is no .githas in the zip file"
+			lc_log "ERROR" "There is no .githash in the zip file"
 		fi
 	fi
 
 	GIT_HASH_LIFERAY_PORTAL_EE=$(cat "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
 
-	generate_checksum_files
+	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_FIX_PACK_URL##*/}"
 
-	rm -r "${MAIN_DIR}"/downloads
+	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
+
+	generate_checksum_files "${bundle_archive}"
+
+	rm -rf "${MAIN_DIR}"/downloads
 }
 
 function get_liferay_version_format {
 	LIFERAY_VERSION=$(grep -v additional_tags bundles.yml | grep -B 1 -E ".${TIME_STAMP}." | head -1 | tr -d '\r: ')
+
 	if [[ -z ${LIFERAY_VERSION} ]]
 	then
-		lc_log ERROR "LIFERAY_VERSON is not specified"
+		lc_log ERROR "LIFERAY_VERSION is not specified"
 		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 	fi
 }
@@ -63,73 +61,79 @@ function generate_release_properties_file {
 		echo "liferay.docker.test.hotfix.url=${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
 		echo "liferay.docker.test.installed.patch=${LIFERAY_DOCKER_TEST_INSTALLED_PATCH}"
 		echo "liferay.product.version=${PRODUCT_VERSION}"
-		echo "release.date=${RELEASE_DATE}" #rewrite this to the correct format
+		echo "release.date=${RELEASE_DATE}"
 		echo "target.platform.version=${TARGET_PLATFORM_VERSION}"
 	) > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
 }
 
 function generate_checksum_files {
-	local file_name="${BUNDLE_URL##*/}"
+	local bundle_archive="${1}"
 
-	if ( ! sha512sum downloads/"${DIR_VERSION}"/"${file_name}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${file_name}.sha512")
+	if ( ! sha512sum downloads/"${DIR_VERSION}"/"${bundle_archive}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${bundle_archive}.sha512")
 	then
 		lc_log ERROR "Failed to generate sha521"
 		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 	fi
 
-	BUNDLE_CHECKSUM_SHA512="${file_name}.sha512"
+	BUNDLE_CHECKSUM_SHA512="${bundle_archive}.sha512"
 }
 
 function get_time_stamp {
-	url="https://releases.liferay.com/dxp/${DIR_VERSION}/"
+	url="https://releases.liferay.com/dxp/${DIR_VERSION}"/
 	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$')
-
-	if [[ -z "${filename}" ]]
-	then
-		lc_log ERROR "Failed to retrieve timestamp"
-		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
-	fi
-
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
  	TIME_STAMP="${numeric_part}"
 
-
+	if [[ -z "${TIME_STAMP}" ]]
+	then
+		lc_log ERROR "Failed to retrieve timestamp"
+		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+	fi
 }
 
 function get_tomcat_version_from_file {
-	local file_name="${1}"
+	local bundle_archive="${1}"
 	local name
 
-		if ( curl "https://${BUNDLE_URL}" -o ./"${file_name}" )
+	mkdir -p "${MAIN_DIR}"/downloads/"${DIR_VERSION}"
+
+	if ( lc_download "https://${BUNDLE_URL}" "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}" )
+	then
+		bundle_archive="${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}"
+
+		if [[ "${bundle_archive}" == *.7z ]]
 		then
-			if [[ "${file_name}" == *.7z ]]
-			then
-				name=$(7z l "${file_name}" | grep -m 1 "/tomcat" | tr -d '/')
-				echo "${name##*-}"
-			else
-				name=$(unzip -l "${file_name}" | grep -m 1 "/tomcat" | tr -d '/')
-				echo "${name##*-}"
-			fi
+			name=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+			echo "${name##*-}"
 		else
-			lc_log ERROR "Failed to download bundle file for tomcat"
-			exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+			name=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+			echo "${name##*-}"
 		fi
-	rm -r "${file_name}"
+	else
+		lc_log ERROR "Failed to download bundle file for tomcat"
+		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+	fi
 }
 
 function get_json {
 	local version="${1}"
 	local tag="${2}"
-	local file_name="${BUNDLE_URL##*/}"
+	local bundle_archive="${BUNDLE_URL##*/}"
 	local name
 
 	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage | tostring | test("'${version}'")) | '${tag}'')
 
-	if [[ -z "${result}" ]] && [[ "${tag}" == ".appServerTomcatVersion" ]]
+	if [[ -z "${result}" ]]
 	then
-		name=$(get_tomcat_version_from_file "${file_name}")
-		echo "${name}"
+		if [[ "${tag}" == ".appServerTomcatVersion" ]]
+		then
+			name=$(get_tomcat_version_from_file "${bundle_archive}")
+
+			echo "${name}"
+		else
+			echo ""
+		fi
 	else
 		echo "${result}"
 	fi
@@ -142,13 +146,8 @@ function get_yml {
 	local tag="${3}"
 
 	result=$(yq '."'"${main_key}"'"."'"${version}"'"."'"${tag}"'"' bundles.yml)
-
-	if [[ -z "${result}" ]]
-	then
-		echo ""
-	else
-		echo "${result}"
-	fi
+	
+	echo "${result}"
 }
 
 function set_value {
@@ -189,23 +188,23 @@ function set_value {
 
 function main {
 	MAIN_DIR="${PWD}"
-	DIR_VERSION=$1
+
 	mkdir -p "versions"
 
-	# read DIR_VERSION; do
-		get_time_stamp "${DIR_VERSION}"
-
+	while read DIR_VERSION
+	do
+		LIFERAY_COMMON_LOG_DIR="${MAIN_DIR}"/logs/"${DIR_VERSION}"
 		if [[ $(grep -c -w "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
+			lc_time_run get_time_stamp "${DIR_VERSION}"
 			lc_time_run set_value
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
-	#	else
-	#		continue
+		else
+			continue
 		fi
-	#done < versions.txt
-
+	done < versions.txt
 }
 
-main "${1}"
+main
