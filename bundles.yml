@@ -216,9 +216,9 @@
         bundle_url: releases-cdn.liferay.com/dxp/7.1.10-dxp-27/liferay-dxp-tomcat-7.1.10-dxp-27-slim-20220701154333275.7z
         test_installed_patch: dxp-27-7110,hotfix-6488-7110
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.1.10/hotfix/liferay-hotfix-6488-7110.zip
-    7.1.10-sp8:
-        additional_tags: 7.1.10-dxp-28
-        bundle_url: releases-cdn.liferay.com/dxp/7.1.10.8/liferay-dxp-tomcat-7.1.10.8-sp8-slim-20220926154152962.7z
+    7.1.10-dxp-28:
+        additional_tags: 7.1.10-sp8
+        bundle_url: releases-cdn.liferay.com/dxp/7.1.10-dxp-28/liferay-dxp-tomcat-7.1.10-dxp-28-20220823192814876.7z
         test_installed_patch: dxp-28-7110,hotfix-6556-7110
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.1.10/hotfix/liferay-hotfix-6556-7110.zip
 7.2.1:
@@ -246,9 +246,9 @@
         bundle_url: releases-cdn.liferay.com/dxp/7.2.10-dxp-4/liferay-dxp-tomcat-7.2.10-dxp-4-20200121112425051.7z
         fix_pack_url: files.liferay.com/private/ee/fix-packs/7.2.10/security-dxp/liferay-security-dxp-4-202003-4-7210.zip
         test_installed_patch: dxp-4-7210,security-dxp-4-202003-4-7210
-    7.2.10-sp2:
-        additional_tags: 7.2.10-dxp-5
-        bundle_url: releases-cdn.liferay.com/dxp/7.2.10.2/liferay-dxp-tomcat-7.2.10.2-sp2-slim-20200511121558464.7z
+    7.2.10-dxp-5:
+        additional_tags: 7.2.10-sp2
+        bundle_url: releases-cdn.liferay.com/dxp/7.2.10-dxp-5/liferay-dxp-tomcat-7.2.10-dxp-5-20200505191324118.7z
         test_installed_patch: dxp-5-7210,hotfix-1467-7210
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.2.10/hotfix/liferay-hotfix-1467-7210.zip
     7.2.10-security-dxp-5-202003-1:
@@ -280,9 +280,9 @@
         bundle_url: releases-cdn.liferay.com/dxp/7.2.10-dxp-10/liferay-dxp-tomcat-7.2.10-dxp-10-slim-20210112204850440.7z
         test_installed_patch: dxp-10-7210,hotfix-3971-7210
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.2.10/hotfix/liferay-hotfix-3971-7210.zip
-    7.2.10-sp4:
-        additional_tags: 7.2.10-dxp-11
-        bundle_url: releases-cdn.liferay.com/dxp/7.2.10.4/liferay-dxp-tomcat-7.2.10.4-sp4-slim-20210302130725158.7z
+    7.2.10-dxp-11:
+        additional_tags: 7.2.10-sp4
+        bundle_url: releases-cdn.liferay.com/dxp/7.2.10-dxp-11/liferay-dxp-tomcat-7.2.10-dxp-11-20210302164507253.7z
         test_installed_patch: dxp-11-7210,hotfix-4327-7210
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.2.10/hotfix/liferay-hotfix-4327-7210.zip
     7.2.10-dxp-12:
