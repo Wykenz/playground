@@ -312,7 +312,7 @@
         test_installed_patch: dxp-17-7210,hotfix-6814-7210
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.2.10/hotfix/liferay-hotfix-6814-7210.zip
     7.2.10-dxp-18:
-        bundle_url: releases-cdn.liferay.com/dxp/7.2.10/liferay-dxp-tomcat-7.2.10-ga1-20190531140450482.7z
+        bundle_url: releases-cdn.liferay.com/dxp/7.2.10-dxp-18/liferay-dxp-tomcat-7.2.10-dxp-18-20220506062749778.7z
         fix_pack_url: files.liferay.com/private/ee/fix-packs/7.2.10/dxp/liferay-fix-pack-dxp-18-7210.zip
         test_installed_patch: dxp-18-7210,hotfix-7204-7210
         test_hotfix_url: files.liferay.com/private/ee/fix-packs/7.2.10/hotfix/liferay-hotfix-7204-7210.zip
@@ -667,12 +667,19 @@
     7.4.13-u102:
         bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u102/liferay-dxp-tomcat-7.4.13.u102-20231109153600206.7z
     7.4.13-u103:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u103/liferay-dxp-tomcat-7.4.13-u103-1700120367.7z
     7.4.13-u104:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u104/liferay-dxp-tomcat-7.4.13-u104-1700843804.7z
     7.4.13-u105:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u105/liferay-dxp-tomcat-7.4.13-u105-1701438227.7z
     7.4.13-u106:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u106/liferay-dxp-tomcat-7.4.13-u106-1701957014.7z
     7.4.13-u107:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u107/liferay-dxp-tomcat-7.4.13-u107-1702556776.7z
     7.4.13-u108:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u108/	liferay-dxp-tomcat-7.4.13-u108-1703850693.7z
     7.4.13-u109:
+        bundle_url: releases-cdn.liferay.com/dxp/7.4.13-u109/liferay-dxp-tomcat-7.4.13-u109-1704159029.7z
     7.4.13.nightly:
         bundle_url: releases-cdn.liferay.com/dxp/nightly/liferay-dxp-tomcat-7.4.13.nightly.7z
 quarterly:

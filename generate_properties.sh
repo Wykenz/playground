@@ -42,7 +42,7 @@ function get_liferay_version_format {
 
 	if [[ -z ${LIFERAY_VERSION} ]]
 	then
-		lc_log ERROR "LIFERAY_VERSION is not specified"
+		lc_log ERROR "LIFERAY_VERSION is not specified, the searched timestamp is ${TIME_STAMP}"
 		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 	fi
 }
