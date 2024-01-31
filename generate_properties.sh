@@ -104,13 +104,13 @@ function get_tomcat_version_from_file {
 		if [[ "${bundle_archive}" == *.7z ]]
 		then
 			FILE_TOMCAT_VERSION=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
-			echo "${FILE_TOMCAT_VERSION##*-}"
+			FILE_TOMCAT_VERSION="${FILE_TOMCAT_VERSION##*-}"
 		else
 			FILE_TOMCAT_VERSION=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
-			echo "${FILE_TOMCAT_VERSION##*-}"
+			FILE_TOMCAT_VERSION="${FILE_TOMCAT_VERSION##*-}"
 		fi
 	else
-		lc_log ERROR "Failed to download bundle file for tomcat" > dev/null
+		lc_log ERROR "Failed to download bundle file for tomcat"
 		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 	fi
 }
@@ -190,7 +190,7 @@ function set_value {
 
 function main {
 	MAIN_DIR="${PWD}"
-DIR_VERSION=$1
+	DIR_VERSION=$1
 	mkdir -p "versions"
 
 	#while read DIR_VERSION
@@ -209,4 +209,4 @@ DIR_VERSION=$1
 	#done < versions.txt
 }
 
-main $1
+main "${1}"
