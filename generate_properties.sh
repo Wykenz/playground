@@ -94,7 +94,6 @@ function get_time_stamp {
 
 function get_tomcat_version_from_file {
 	local bundle_archive="${1}"
-	local name
 
 	mkdir -p "${MAIN_DIR}"/downloads/"${DIR_VERSION}"
 
@@ -104,14 +103,14 @@ function get_tomcat_version_from_file {
 
 		if [[ "${bundle_archive}" == *.7z ]]
 		then
-			name=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
-			echo "${name##*-}"
+			FILE_TOMCAT_VERSION=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+			echo "${FILE_TOMCAT_VERSION##*-}"
 		else
-			name=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
-			echo "${name##*-}"
+			FILE_TOMCAT_VERSION=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+			echo "${FILE_TOMCAT_VERSION##*-}"
 		fi
 	else
-		lc_log ERROR "Failed to download bundle file for tomcat"
+		lc_log ERROR "Failed to download bundle file for tomcat" > dev/null
 		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 	fi
 }
@@ -120,17 +119,20 @@ function get_json {
 	local version="${1}"
 	local tag="${2}"
 	local bundle_archive="${BUNDLE_URL##*/}"
-	local name
 
-	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage | tostring | test("'${version}'")) | '${tag}'')
+	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage | tostring == "liferay/dxp:'${version}'\"") | '${tag}'')
 
 	if [[ -z "${result}" ]]
 	then
 		if [[ "${tag}" == ".appServerTomcatVersion" ]]
 		then
-			name=$(get_tomcat_version_from_file "${bundle_archive}")
-
-			echo "${name}"
+			get_tomcat_version_from_file "${bundle_archive}"
+			if [[ "${FILE_TOMCAT_VERSION}" == "^[0-9]+\.[0-9]+\.[0-9]+$" ]]
+			then
+				echo "${FILE_TOMCAT_VERSION}"
+			else
+				echo ""
+			fi
 		else
 			echo ""
 		fi
@@ -188,11 +190,11 @@ function set_value {
 
 function main {
 	MAIN_DIR="${PWD}"
-
+DIR_VERSION=$1
 	mkdir -p "versions"
 
-	while read DIR_VERSION
-	do
+	#while read DIR_VERSION
+	#do
 		LIFERAY_COMMON_LOG_DIR="${MAIN_DIR}"/logs/"${DIR_VERSION}"
 		if [[ $(grep -c -w "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
@@ -201,10 +203,10 @@ function main {
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
-		else
-			continue
+	#	else
+	#		continue
 		fi
-	done < versions.txt
+	#done < versions.txt
 }
 
-main
+main $1
