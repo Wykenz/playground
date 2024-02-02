@@ -71,15 +71,22 @@ function generate_checksum_files {
 
 	if ( ! sha512sum downloads/"${DIR_VERSION}"/"${bundle_archive}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${bundle_archive}.sha512")
 	then
-		lc_log ERROR "Failed to generate sha521"
-		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+		if ( ! sha512sum "${LIFERAY_COMMON_DOWNLOAD_CACHE_DIR}"/releases-cdn.liferay.com/dxp/"${DIR_VERSION}"/"${bundle_archive}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${bundle_archive}.sha512"	)
+		then
+			lc_log ERROR "Couldn't generate sha512 for ${DIR_VERSION}"
+			exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+		else
+			BUNDLE_CHECKSUM_SHA512="${bundle_archive}.sha512"
+		fi
+	else
+		BUNDLE_CHECKSUM_SHA512="${bundle_archive}.sha512"
 	fi
 
-	BUNDLE_CHECKSUM_SHA512="${bundle_archive}.sha512"
+	
 }
 
 function get_time_stamp {
-	url="https://releases.liferay.com/dxp/${DIR_VERSION}"/
+	url="https://releases-cdn.liferay.com/dxp/${DIR_VERSION}"/
 	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$')
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
@@ -95,23 +102,15 @@ function get_time_stamp {
 function get_tomcat_version_from_file {
 	local bundle_archive="${1}"
 
-	mkdir -p "${MAIN_DIR}"/downloads/"${DIR_VERSION}"
+	bundle_archive="${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}"
 
-	if ( lc_download "https://${BUNDLE_URL}" "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}" )
+	if [[ "${bundle_archive}" == *.7z ]]
 	then
-		bundle_archive="${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${bundle_archive}"
-
-		if [[ "${bundle_archive}" == *.7z ]]
-		then
-			FILE_TOMCAT_VERSION=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
-			FILE_TOMCAT_VERSION="${FILE_TOMCAT_VERSION##*-}"
-		else
-			FILE_TOMCAT_VERSION=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
-			FILE_TOMCAT_VERSION="${FILE_TOMCAT_VERSION##*-}"
-		fi
+		FILE_TOMCAT_VERSION=$(7z l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+		FILE_TOMCAT_VERSION="${FILE_TOMCAT_VERSION##*-}"
 	else
-		lc_log ERROR "Failed to download bundle file for tomcat"
-		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+		FILE_TOMCAT_VERSION=$(unzip -l "${bundle_archive}" | grep -m 1 "/tomcat" | tr -d '/')
+		FILE_TOMCAT_VERSION="${FILE_TOMCAT_VERSION##*-}"
 	fi
 }
 
@@ -120,18 +119,19 @@ function get_json {
 	local tag="${2}"
 	local bundle_archive="${BUNDLE_URL##*/}"
 
-	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select(.liferayDockerImage | tostring == "liferay/dxp:'${version}'\"") | '${tag}'')
+	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '[.[] | select((.liferayDockerImage | tostring) as $image | ($image == "docker pull Liferay/dxp:'${version}'" or $image == "liferay/dxp:'${version}'")) | '${tag}' ] | first')
 
 	if [[ -z "${result}" ]]
 	then
 		if [[ "${tag}" == ".appServerTomcatVersion" ]]
 		then
 			get_tomcat_version_from_file "${bundle_archive}"
-			if [[ "${FILE_TOMCAT_VERSION}" == "^[0-9]+\.[0-9]+\.[0-9]+$" ]]
+			if [[ "${FILE_TOMCAT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 			then
 				echo "${FILE_TOMCAT_VERSION}"
 			else
-				echo ""
+				lc_log ERROR "Failed to retrieve tomcat version"
+				exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 			fi
 		else
 			echo ""
@@ -149,7 +149,15 @@ function get_yml {
 
 	result=$(yq '."'"${main_key}"'"."'"${version}"'"."'"${tag}"'"' bundles.yml)
 	
-	echo "${result}"
+	if [[ -n "${result}" ]]
+	then
+		echo "${result}"
+	else
+		lc_log ERROR "Failed to retrieve ${tag} from yml"
+		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
+	fi
+
+	
 }
 
 function set_value {
@@ -165,6 +173,12 @@ function set_value {
 	BUILD_TIMESTAMP="${TIME_STAMP}"
 
 	BUNDLE_URL=$(get_yml "${main_key}" "${LIFERAY_VERSION}" bundle_url)
+
+	if ( ! lc_download "https://${BUNDLE_URL}" "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${BUNDLE_URL##*/}")
+	then
+		lc_log ERROR "Failed to download bundle"
+		exti "${LIFERAY_COMMON_CODE_BAD}"
+	fi
 
 	TOMCAT_VERSION=$(get_json "${LIFERAY_VERSION}" .appServerTomcatVersion)
 
@@ -195,6 +209,7 @@ function main {
 
 	#while read DIR_VERSION
 	#do
+		mkdir -p "${MAIN_DIR}"/downloads/"${DIR_VERSION}"
 		LIFERAY_COMMON_LOG_DIR="${MAIN_DIR}"/logs/"${DIR_VERSION}"
 		if [[ $(grep -c -w "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
