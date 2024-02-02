@@ -126,7 +126,7 @@ function get_json {
 		if [[ "${tag}" == ".appServerTomcatVersion" ]]
 		then
 			get_tomcat_version_from_file "${bundle_archive}"
-			if [[ "${FILE_TOMCAT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+			if [[ "${FILE_TOMCAT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ -n "${FILE_TOMCAT_VERSION}" ]]
 			then
 				echo "${FILE_TOMCAT_VERSION}"
 			else
