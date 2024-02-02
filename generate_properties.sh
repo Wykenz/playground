@@ -10,7 +10,9 @@ function clean_up_nulls {
 
 function download_zip_files {
 	local bundle_archive="${BUNDLE_URL##*/}"
+
 	echo "${bundle_archive}"
+
 	mkdir -p versions/"${DIR_VERSION}"
 
 	if [[ "${bundle_archive}" == *.7z ]]
@@ -81,8 +83,6 @@ function generate_checksum_files {
 	else
 		BUNDLE_CHECKSUM_SHA512="${bundle_archive}.sha512"
 	fi
-
-	
 }
 
 function get_time_stamp {
@@ -139,7 +139,6 @@ function get_json {
 	else
 		echo "${result}"
 	fi
-
 }
 
 function get_yml {
@@ -156,8 +155,6 @@ function get_yml {
 		lc_log ERROR "Failed to retrieve ${tag} from yml"
 		exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
 	fi
-
-	
 }
 
 function set_value {
@@ -204,13 +201,15 @@ function set_value {
 
 function main {
 	MAIN_DIR="${PWD}"
-	DIR_VERSION=$1
+
 	mkdir -p "versions"
 
-	#while read DIR_VERSION
-	#do
+	while read DIR_VERSION
+	do
 		mkdir -p "${MAIN_DIR}"/downloads/"${DIR_VERSION}"
+
 		LIFERAY_COMMON_LOG_DIR="${MAIN_DIR}"/logs/"${DIR_VERSION}"
+		
 		if [[ $(grep -c -w "${DIR_VERSION}" bundles.yml) -gt 0 ]]
 		then
 			lc_time_run get_time_stamp "${DIR_VERSION}"
@@ -218,10 +217,10 @@ function main {
 			lc_time_run download_zip_files
 			lc_time_run generate_release_properties_file
 			lc_time_run clean_up_nulls
-	#	else
-	#		continue
+		else
+			continue
 		fi
-	#done < versions.txt
+	done < versions.txt
 }
 
-main "${1}"
+main
