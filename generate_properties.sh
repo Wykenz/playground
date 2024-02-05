@@ -10,6 +10,30 @@ function clean_up_nulls {
 	sed -i 's/"//g' "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
 }
 
+function create_liferay_product_version {
+	local version_end
+	local version_tag
+	local version_front
+
+	version_tag="${LIFERAY_VERSION#*-}"
+	version_end=${LIFERAY_VERSION##*-}
+	version_front=${LIFERAY_VERSION%.*}
+
+	if [[ ${version_tag} =~ "de" ]]
+	then
+		PRODUCT_VERSION="DXP ${version_front} DE${version_end}"
+	elif [[ ${version_tag} =~ "dxp" ]]
+	then
+		PRODUCT_VERSION="DXP ${version_front} FP${version_end}"
+	elif [[ ${version_tag} =~ "sp" ]]
+	then
+		PRODUCT_VERSION="DXP ${version_front} ${version_end^^}"
+	elif [[ ${version_tag} =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+	then
+		PRODUCT_VERSION="DXP ${version_front%.*} SP${version_end##*.}"
+	fi
+}
+
 function download_zip_files {
 	local bundle_archive="${BUNDLE_URL##*/}"
 
@@ -35,6 +59,7 @@ function download_zip_files {
 	if [[ "${LIFERAY_DOCKER_FIX_PACK_URL}" != null ]]
 	then
 		lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_FIX_PACK_URL##*/}"
+		LIFERAY_DOCKER_FIX_PACK_URL="https://${LIFERAY_DOCKER_FIX_PACK_URL}"
 	else
 		lc_log DEBUG "There is no fix_pack_url for ${LIFERAY_VERSION}"
 	fi
@@ -42,6 +67,7 @@ function download_zip_files {
 	if [[ "${LIFERAY_DOCKER_TEST_HOTFIX_URL}" != null ]]
 	then
 		lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
+		LIFERAY_DOCKER_TEST_HOTFIX_URL="https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
 	else
 		lc_log DEBUG "There is no hotfix_url for ${LIFERAY_VERSION}"
 	fi
@@ -63,9 +89,6 @@ function get_liferay_version_format {
 
 function generate_release_properties_file {
 	BUNDLE_URL="https://${BUNDLE_URL}"
-	LIFERAY_DOCKER_FIX_PACK_URL="https://${LIFERAY_DOCKER_FIX_PACK_URL}"
-	LIFERAY_DOCKER_TEST_HOTFIX_URL="https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
-
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
@@ -206,36 +229,17 @@ function set_value {
 	LIFERAY_DOCKER_TEST_INSTALLED_PATCH=$(get_yml "${main_key}" "${LIFERAY_VERSION}" test_installed_patch)
 
 	PRODUCT_VERSION=$(get_json "${LIFERAY_VERSION}" .liferayProductVersion)
-	
+
 	if [ -z "${PRODUCT_VERSION}" ]
 	then
-		local version_end
-		local version_tag
-		local version_front
-
-		version_tag="${LIFERAY_VERSION#*-}"
-		version_end=${LIFERAY_VERSION##*-}
-		version_front=${LIFERAY_VERSION%.*}
-
-		if [[ ${version_tag} =~ "de" ]]
-		then
-			PRODUCT_VERSION="DXP ${version_front} DE${version_end}"
-		elif [[ ${version_tag} =~ "dxp" ]]
-		then
-			PRODUCT_VERSION="DXP ${version_front} FP${version_end}"
-		elif [[ ${version_tag} =~ "sp" ]]
-		then
-			PRODUCT_VERSION="DXP ${version_front} ${version_end^^}"
-		elif [[ ${version_tag} == "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" ]]
-		then
-			PRODUCT_VERSION="DXP ${version_front} SP${version_end}"
-		fi
-
+		create_liferay_product_version
 	fi
 
 	if [ -n "${date}" ]
 	then
 		RELEASE_DATE=$(date -d "${date//\"/}" +"%Y-%-m-%-d")
+	else 
+		RELEASE_DATE=""
 	fi
 
 	TARGET_PLATFORM_VERSION=$(get_json "${LIFERAY_VERSION}" .targetPlatformVersion)
