@@ -206,6 +206,32 @@ function set_value {
 	LIFERAY_DOCKER_TEST_INSTALLED_PATCH=$(get_yml "${main_key}" "${LIFERAY_VERSION}" test_installed_patch)
 
 	PRODUCT_VERSION=$(get_json "${LIFERAY_VERSION}" .liferayProductVersion)
+	
+	if [ -z "${PRODUCT_VERSION}" ]
+	then
+		local version_end
+		local version_tag
+		local version_front
+
+		version_tag="${LIFERAY_VERSION#*-}"
+		version_end=${LIFERAY_VERSION##*-}
+		version_front=${LIFERAY_VERSION%.*}
+
+		if [[ ${version_tag} =~ "de" ]]
+		then
+			PRODUCT_VERSION="DXP ${version_front} DE${version_end}"
+		elif [[ ${version_tag} =~ "dxp" ]]
+		then
+			PRODUCT_VERSION="DXP ${version_front} FP${version_end}"
+		elif [[ ${version_tag} =~ "sp" ]]
+		then
+			PRODUCT_VERSION="DXP ${version_front} ${version_end^^}"
+		elif [[ ${version_tag} == "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" ]]
+		then
+			PRODUCT_VERSION="DXP ${version_front} SP${version_end}"
+		fi
+
+	fi
 
 	if [ -n "${date}" ]
 	then
