@@ -237,6 +237,8 @@ function main {
 			continue
 		fi
 	done < versions.txt
+
+	zip -r versions.zip versions
 }
 
 main
