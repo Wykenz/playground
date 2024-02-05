@@ -2,6 +2,8 @@
 
 source ./_liferay_common.sh
 
+set -o pipefail
+
 function clean_up_nulls {
 	sed -i 's*/null**g' "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
 	sed -i 's/null//g' "${MAIN_DIR}"/versions/"${DIR_VERSION}"/release.properties
@@ -30,9 +32,19 @@ function download_zip_files {
 
 	GIT_HASH_LIFERAY_PORTAL_EE=$(cat "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/.githash)
 
-	lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_FIX_PACK_URL##*/}"
+	if [[ "${LIFERAY_DOCKER_FIX_PACK_URL}" != null ]]
+	then
+		lc_download "https://${LIFERAY_DOCKER_FIX_PACK_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_FIX_PACK_URL##*/}"
+	else
+		lc_log DEBUG "There is no fix_pack_url for ${LIFERAY_VERSION}"
+	fi
 
-	lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
+	if [[ "${LIFERAY_DOCKER_TEST_HOTFIX_URL}" != null ]]
+	then
+		lc_download "https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}" versions/"${DIR_VERSION}"/"${LIFERAY_DOCKER_TEST_HOTFIX_URL##*/}"
+	else
+		lc_log DEBUG "There is no hotfix_url for ${LIFERAY_VERSION}"
+	fi
 
 	generate_checksum_files "${bundle_archive}"
 
@@ -50,6 +62,10 @@ function get_liferay_version_format {
 }
 
 function generate_release_properties_file {
+	BUNDLE_URL="https://${BUNDLE_URL}"
+	LIFERAY_DOCKER_FIX_PACK_URL="https://${LIFERAY_DOCKER_FIX_PACK_URL}"
+	LIFERAY_DOCKER_TEST_HOTFIX_URL="https://${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
+
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
@@ -119,7 +135,7 @@ function get_json {
 	local tag="${2}"
 	local bundle_archive="${BUNDLE_URL##*/}"
 
-	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '[.[] | select((.liferayDockerImage | tostring) as $image | ($image == "docker pull Liferay/dxp:'${version}'" or $image == "liferay/dxp:'${version}'")) | '${tag}' ] | first')
+	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select((.liferayDockerImage | tostring) as $image | ($image == "docker pull Liferay/dxp:'${version}'" or $image == "liferay/dxp:'${version}'")) | '${tag}'')
 
 	if [[ -z "${result}" ]]
 	then
