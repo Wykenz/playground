@@ -16,18 +16,18 @@ function create_liferay_product_version {
 	local version_front
 
 	version_tag="${LIFERAY_VERSION#*-}"
-	version_end=${LIFERAY_VERSION##*-}
-	version_front=${LIFERAY_VERSION%.*}
+	version_end="${LIFERAY_VERSION##*-}"
+	version_front="${LIFERAY_VERSION%.*}"
 
-	if [[ ${version_tag} =~ "de" ]]
+	if [[ ${version_tag} =~ "ga" ]] || [[ ${version_tag} =~ "sp" ]] || [[ ${version_tag} =~ "u" ]]
+	then
+		PRODUCT_VERSION="DXP ${version_front} ${version_end^^}"
+	elif [[ ${version_tag} =~ "de" ]]
 	then
 		PRODUCT_VERSION="DXP ${version_front} DE${version_end}"
 	elif [[ ${version_tag} =~ "dxp" ]]
 	then
 		PRODUCT_VERSION="DXP ${version_front} FP${version_end}"
-	elif [[ ${version_tag} =~ "sp" ]]
-	then
-		PRODUCT_VERSION="DXP ${version_front} ${version_end^^}"
 	elif [[ ${version_tag} =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
 	then
 		PRODUCT_VERSION="DXP ${version_front%.*} SP${version_end##*.}"
@@ -74,6 +74,8 @@ function download_zip_files {
 
 	generate_checksum_files "${bundle_archive}"
 
+	BUNDLE_URL="https://${BUNDLE_URL}"
+
 	rm -rf "${MAIN_DIR}"/downloads
 }
 
@@ -88,7 +90,6 @@ function get_liferay_version_format {
 }
 
 function generate_release_properties_file {
-	BUNDLE_URL="https://${BUNDLE_URL}"
 	(
 		echo "app.server.tomcat.version=${TOMCAT_VERSION}"
 		echo "build.timestamp=${BUILD_TIMESTAMP}"
