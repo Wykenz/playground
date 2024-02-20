@@ -1,0 +1,95 @@
+
+tag: fix-pack-fix-256216445
+baseline: fix-pack-dxp-3-7310
+baseline sha: 4bc7babded7faa24c4d278ee88d39127444b8944
+ticket: hotfix-8453-7310
+
+git fetch origin refs/tags/fix-pack-fix-256216445:refs/tags/fix-pack-fix-256216445 --no-tags
+
+git checkout -b liferay-hotfix-8453-7310-branch fix-pack-fix-256216445
+
+git filter-branch -f \
+--index-filter 'git rm -rf --cached --ignore-unmatch \
+":(glob)**/*.gradle" \
+":(glob)**/build*.xml" \
+":(glob)*.properties" \
+":(glob)gradle/**" \
+":(glob)modules/**/gradle.properties" \
+git* \
+gradle* \
+modules/*.report.properties \
+":(glob)portal-web/test/com/**" \
+":(glob)portal-web/test-ant-templates/**" \
+modules/dxp/apps/documentum/* \
+modules/dxp/apps/portal-mobile-device-detection-fiftyonedegrees-enterprise/* \
+modules/dxp/apps/oauth/* \
+modules/dxp/apps/osb/* \
+modules/dxp/apps/portal-search-elasticsearch-cross-cluster-replication/* \
+modules/dxp/apps/akismet/* \
+modules/dxp/apps/commerce-salesforce-connector/* \
+modules/dxp/apps/commerce-demo-pack/* \
+modules/dxp/apps/commerce-punchout/* \
+modules/dxp/apps/portal-search-learning-to-rank/* \
+modules/dxp/apps/portal-search-elasticsearch-monitoring/* \
+modules/dxp/apps/sync/vldap/* \
+modules/dxp/apps/sync/sync/*' \
+--commit-filter 'git_commit_non_empty_tree "$@"' \
+--msg-filter 'read message; echo "$message ($GIT_COMMIT)"' \
+4bc7babded7faa24c4d278ee88d39127444b8944~1..HEAD
+
+git log --grep="4bc7babded7faa24c4d278ee88d39127444b8944"
+
+git format-patch --binary -o ../patches/ 4d5b24c43ad1994d735161f1ecd4125b337b7e8e..HEAD
+
+(liferay-dxp)
+
+git checkout -b liferay-hotfix-8453-7310-branch fix-pack-dxp-3-7310
+
+git am -3 --ignore-whitespace ../patches/*
+
+git tag liferay-hotfix-8453-7310
+
+git push upstream refs/heads/liferay-hotfix-8453-7310-branch --tags --set-upstream --verbose
+
+----------------------------------
+git add . --force
+git commit -m "7.4.13 Update 78 (2a7ae0749c5b7c712e22fe20ad97479ba74dcd0f)"
+git commit -m "7.3.10 Update 34 (4bc7babded7faa24c4d278ee88d39127444b8944)"
+git commit -m "7.0.10 DE-102 (8d592fef7b8b43865e2e4cc416643a0ea626a7dd)"
+git tag 7.3.10-u30
+git tag fix-pack-dxp-3-7310
+git tag fix-pack-de-102-7010
+git push upstream --tags
+-------
+scs 7.2
+git filter-branch -f \
+--index-filter 'git rm -rf --cached --ignore-unmatch \
+":(glob)**/*.gradle" \
+":(glob)**/build*.xml" \
+":(glob)*.properties" \
+":(glob)gradle/**" \
+":(glob)modules/**/gradle.properties" \
+git* \
+gradle* \
+modules/*.report.properties \
+":(glob)portal-web/test/com/**" \
+":(glob)portal-web/test-ant-templates/**" \
+modules/dxp/apps/documentum/* \
+modules/dxp/apps/portal-mobile-device-detection-fiftyonedegrees-enterprise/* \
+modules/dxp/apps/osb/* \
+modules/dxp/apps/portal-search-elasticsearch-cross-cluster-replication/* \
+modules/dxp/apps/akismet/* \
+modules/dxp/apps/multi-factor-authentication/* \
+modules/dxp/apps/commerce-salesforce-connector/* \
+modules/dxp/apps/commerce-demo-pack/* \
+modules/dxp/apps/commerce-punchout/* \
+modules/dxp/apps/portal-search-learning-to-rank/* \
+modules/dxp/apps/portal-search-elasticsearch6-xpack-security/* \
+modules/dxp/apps/portal-search-elasticsearch6-xpack-monitoring/* \
+modules/dxp/apps/sync/vldap/* \
+modules/dxp/apps/sync/portal-search-similar-results/* \
+modules/dxp/apps/sync/spi/* \
+modules/dxp/apps/sync/sync/*' \
+--commit-filter 'git_commit_non_empty_tree "$@"' \
+--msg-filter 'read message; echo "$message ($GIT_COMMIT)"' \
+4bc7babded7faa24c4d278ee88d39127444b8944~1..HEAD
