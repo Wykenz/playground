@@ -21,7 +21,7 @@ function create_liferay_product_version {
 
 	if [[ ${version_tag} =~ "ga" ]] || [[ ${version_tag} =~ "sp" ]] || [[ ${version_tag} =~ "u" ]]
 	then
-		PRODUCT_VERSION="DXP ${version_front} ${version_end^^}"
+		PRODUCT_VERSION="PORTAL ${version_front} ${version_end^^}"
 	elif [[ ${version_tag} =~ "de" ]]
 	then
 		PRODUCT_VERSION="DXP ${version_front} DE${version_end}"
@@ -98,8 +98,8 @@ function generate_release_properties_file {
 		echo "git.hash.liferay-docker="
 		echo "git.hash.liferay-portal-ee=${GIT_HASH_LIFERAY_PORTAL_EE}"
 		echo "liferay.docker.fix.pack.url=${LIFERAY_DOCKER_FIX_PACK_URL}"
-		echo "liferay.docker.image=liferay/dxp:${LIFERAY_DOCKER_IMAGE}"
-		echo "liferay.docker.tags=liferay/dxp:${LIFERAY_DOCKER_IMAGE}/${LIFERAY_DOCKER_TAGS}"
+		echo "liferay.docker.image=liferay/portal:${LIFERAY_DOCKER_IMAGE}"
+		echo "liferay.docker.tags=liferay/portal:${LIFERAY_DOCKER_IMAGE}/${LIFERAY_DOCKER_TAGS}"
 		echo "liferay.docker.test.hotfix.url=${LIFERAY_DOCKER_TEST_HOTFIX_URL}"
 		echo "liferay.docker.test.installed.patch=${LIFERAY_DOCKER_TEST_INSTALLED_PATCH}"
 		echo "liferay.product.version=${PRODUCT_VERSION}"
@@ -113,7 +113,7 @@ function generate_checksum_files {
 
 	if ( ! sha512sum downloads/"${DIR_VERSION}"/"${bundle_archive}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${bundle_archive}.sha512")
 	then
-		if ( ! sha512sum "${LIFERAY_COMMON_DOWNLOAD_CACHE_DIR}"/releases-cdn.liferay.com/dxp/"${DIR_VERSION}"/"${bundle_archive}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${bundle_archive}.sha512"	)
+		if ( ! sha512sum "${LIFERAY_COMMON_DOWNLOAD_CACHE_DIR}"/releases-cdn.liferay.com/portal/"${DIR_VERSION}"/"${bundle_archive}" | sed -e "s/ .*//"  > "${MAIN_DIR}"/versions/"${DIR_VERSION}"/"${bundle_archive}.sha512"	)
 		then
 			lc_log ERROR "Couldn't generate sha512 for ${DIR_VERSION}"
 			exit "${LIFERAY_COMMON_EXIT_CODE_BAD}"
@@ -126,8 +126,8 @@ function generate_checksum_files {
 }
 
 function get_time_stamp {
-	url="https://releases-cdn.liferay.com/dxp/${DIR_VERSION}"/
-	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$')
+	url="https://releases-cdn.liferay.com/portal/${DIR_VERSION}"/
+	filename=$(curl -s "$url" | grep -oP 'href="\K[^"?]+' | grep -vE '\?C=|;O=' | grep -E 'tomcat' | grep -E '\.7z$|\.zip$' | head -1)
 	numeric_part=${filename%.*}
 	numeric_part=${numeric_part##*-}
  	TIME_STAMP="${numeric_part}"
@@ -159,7 +159,7 @@ function get_json {
 	local tag="${2}"
 	local bundle_archive="${BUNDLE_URL##*/}"
 
-	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select((.liferayDockerImage | tostring) as $image | ($image == "docker pull Liferay/dxp:'${version}'" or $image == "liferay/dxp:'${version}'")) | '${tag}'')
+	result=$(curl -s "https://releases.liferay.com/tools/workspace/.product_info.json" | jq '.[] | select((.liferayDockerImage | tostring) as $image | ($image == "docker pull Liferay/portal:'${version}'" or $image == "liferay/portal:'${version}'")) | '${tag}'')
 
 	if [[ -z "${result}" ]]
 	then
