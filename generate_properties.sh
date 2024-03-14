@@ -214,7 +214,7 @@ function set_value {
 	if ( ! lc_download "https://${BUNDLE_URL}" "${MAIN_DIR}"/downloads/"${DIR_VERSION}"/"${BUNDLE_URL##*/}")
 	then
 		lc_log ERROR "Failed to download bundle"
-		exit "${LIFERAY_COMMON_CODE_BAD}"
+		exti "${LIFERAY_COMMON_CODE_BAD}"
 	fi
 
 	TOMCAT_VERSION=$(get_json "${LIFERAY_VERSION}" .appServerTomcatVersion)
